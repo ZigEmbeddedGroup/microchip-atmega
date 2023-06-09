@@ -184,7 +184,7 @@ pub fn Uart(comptime index: usize, comptime pins: micro.core.experimental.uart.P
 
         pub fn rx(self: Self) u8 {
             while (!self.canRead()) {} // Wait till the data is received
-            return USART0.UDR0.*; // Read received data
+            return USART0.UDR0; // Read received data
         }
     };
 }
