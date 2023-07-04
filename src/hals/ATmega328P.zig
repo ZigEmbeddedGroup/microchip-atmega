@@ -53,14 +53,14 @@ pub const gpio = struct {
         cpu.cbi(regs(pin).dir_addr, pin.pin);
     }
 
-    pub fn read(comptime pin: type) micro.gpio.State {
+    pub fn read(comptime pin: type) micro.core.experimental.gpio.State {
         return if ((regs(pin).pin.* & (1 << pin.pin)) != 0)
             .high
         else
             .low;
     }
 
-    pub fn write(comptime pin: type, state: micro.gpio.State) void {
+    pub fn write(comptime pin: type, state: micro.core.experimental.gpio.State) void {
         if (state == .high) {
             cpu.sbi(regs(pin).port_addr, pin.pin);
         } else {
@@ -93,7 +93,7 @@ pub const uart = struct {
     };
 };
 
-pub fn Uart(comptime index: usize, comptime pins: micro.uart.Pins) type {
+pub fn Uart(comptime index: usize, comptime pins: micro.core.experimental.uart.Pins) type {
     if (index != 0) @compileError("Atmega328p only has a single uart!");
     if (pins.tx != null or pins.rx != null)
         @compileError("Atmega328p has fixed pins for uart!");
@@ -102,7 +102,7 @@ pub fn Uart(comptime index: usize, comptime pins: micro.uart.Pins) type {
         const Self = @This();
 
         fn computeDivider(baud_rate: u32) !u12 {
-            const pclk = micro.clock.get().cpu;
+            const pclk = micro.core.experimental.clock.get().cpu;
             const divider = ((pclk + (8 * baud_rate)) / (16 * baud_rate)) - 1;
 
             return std.math.cast(u12, divider) orelse return error.UnsupportedBaudRate;
@@ -112,7 +112,7 @@ pub fn Uart(comptime index: usize, comptime pins: micro.uart.Pins) type {
             return micro.clock.get().cpu / (16 * @as(u32, divider) + 1);
         }
 
-        pub fn init(config: micro.uart.Config) !Self {
+        pub fn init(config: micro.core.experimental.uart.Config) !Self {
             const ucsz: u3 = switch (config.data_bits) {
                 .five => 0b000,
                 .six => 0b001,
@@ -157,12 +157,12 @@ pub fn Uart(comptime index: usize, comptime pins: micro.uart.Pins) type {
             USART0.UCSR0C.write(.{
                 .UCPOL0 = 0, // async mode
                 .UCSZ0 = @truncate(u2, (ucsz & 0x03) >> 0),
-                .USBS0 = usbs,
-                .UPM0 = upm,
-                .UMSEL0 = umsel,
+                .USBS0 = .{ .raw = usbs },
+                .UPM0 = .{ .raw = upm },
+                .UMSEL0 = .{ .raw = umsel },
             });
 
-            USART0.UBRR0.modify(ubrr_val);
+            USART0.UBRR0 = ubrr_val;
 
             return Self{};
         }
@@ -174,7 +174,7 @@ pub fn Uart(comptime index: usize, comptime pins: micro.uart.Pins) type {
 
         pub fn tx(self: Self, ch: u8) void {
             while (!self.canWrite()) {} // Wait for Previous transmission
-            USART0.UDR0.* = ch; // Load the data to be transmitted
+            USART0.UDR0 = ch; // Load the data to be transmitted
         }
 
         pub fn canRead(self: Self) bool {
@@ -184,7 +184,7 @@ pub fn Uart(comptime index: usize, comptime pins: micro.uart.Pins) type {
 
         pub fn rx(self: Self) u8 {
             while (!self.canRead()) {} // Wait till the data is received
-            return USART0.UDR0.*; // Read received data
+            return USART0.UDR0; // Read received data
         }
     };
 }
