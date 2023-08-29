@@ -16,6 +16,12 @@ pub const clock = struct {
     };
 };
 
+pub export fn abort() noreturn {
+    while (true) {
+        asm volatile ("nop");
+    }
+}
+
 pub fn parsePin(comptime spec: []const u8) type {
     const invalid_format_msg = "The given pin '" ++ spec ++ "' has an invalid format. Pins must follow the format \"P{Port}{Pin}\" scheme.";
 
